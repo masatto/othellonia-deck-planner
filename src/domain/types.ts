@@ -1,4 +1,21 @@
-export const APP_DATA_SCHEMA_VERSION = 1;
+export const APP_DATA_SCHEMA_VERSION = 2;
+
+/**
+ * デッキ枠の代用候補として提案された駒。所持状況・入手方法を、元の駒と同じように
+ * 個別に管理できるようにしている（提案文の中に埋もれさせない）。
+ */
+export interface SubstituteCandidate {
+  candidateId: string;
+  /** 代用候補の駒名 */
+  name: string;
+  /** なぜ代用になり得るかの説明（AI調査結果、自由記述） */
+  reason: string | null;
+  /** 入手方法メモ（AI調査結果、自由記述。未調査ならnull） */
+  acquisitionNote: string | null;
+  /** ユーザーが「所持している」とチェックしたか */
+  owned: boolean;
+  updatedAt: string;
+}
 
 /**
  * 追跡中のデッキ編成案の1枠（駒1体分）。
@@ -10,10 +27,10 @@ export interface DeckSlot {
   pieceName: string;
   /** ユーザーが「所持している」とチェックしたか */
   owned: boolean;
-  /** 代替駒の提案メモ（AI調査結果、自由記述。未調査ならnull） */
-  substituteNote: string | null;
   /** 入手方法メモ（AI調査結果、自由記述。未調査ならnull） */
   acquisitionNote: string | null;
+  /** 代用候補の一覧（未調査なら空配列） */
+  substitutes: SubstituteCandidate[];
   updatedAt: string;
 }
 

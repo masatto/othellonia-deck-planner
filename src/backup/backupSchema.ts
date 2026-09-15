@@ -7,12 +7,25 @@ import type { TrackedDeck } from "../domain/types";
  * AIから直接受け取るデータではないが、不正なバックアップファイルによる
  * データ破壊・スクリプト混入を防ぐため、同様に厳格に検証する。
  */
+const substituteCandidateSchema = z.object({
+  candidateId: safeString(100, 1),
+  name: safeString(NAME_MAX, 1),
+  reason: safeString(SAFE_STRING_MAX).nullable(),
+  acquisitionNote: safeString(SAFE_STRING_MAX).nullable(),
+  owned: z.boolean(),
+  updatedAt: z.string(),
+});
+
 const deckSlotSchema = z.object({
   slotId: safeString(100, 1),
   pieceName: safeString(NAME_MAX, 1),
   owned: z.boolean(),
-  substituteNote: safeString(SAFE_STRING_MAX).nullable(),
   acquisitionNote: safeString(SAFE_STRING_MAX).nullable(),
+  // 旧バックアップ形式(substitutes配列を持たない)との互換のため、無ければ空配列にする
+  substitutes: z
+    .array(substituteCandidateSchema)
+    .optional()
+    .transform((v) => v ?? []),
   updatedAt: z.string(),
 });
 

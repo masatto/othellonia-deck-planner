@@ -12,7 +12,7 @@ function makeDeck(deckId: string): TrackedDeck {
     sourceUrl: null,
     sourceTitle: null,
     checkedAt: null,
-    slots: [{ slotId: "slot-1", pieceName: "駒A", owned: false, substituteNote: null, acquisitionNote: null, updatedAt: now }],
+    slots: [{ slotId: "slot-1", pieceName: "駒A", owned: false, acquisitionNote: null, substitutes: [], updatedAt: now }],
     createdAt: now,
     updatedAt: now,
   };
@@ -57,5 +57,20 @@ describe("IndexedDBデータ層", () => {
 
   it("存在しないdeckIdはundefinedを返す", async () => {
     expect(await getTrackedDeck("not-exist")).toBeUndefined();
+  });
+
+  it("substitutesを持たない旧形式のレコードを読み込んでも壊れず、空配列になる", async () => {
+    const legacyDeck = {
+      ...makeDeck("legacy"),
+      slots: [{ slotId: "slot-1", pieceName: "駒A", owned: false, substituteNote: "旧メモ", acquisitionNote: null, updatedAt: new Date().toISOString() }],
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } as any as TrackedDeck;
+    await putTrackedDeck(legacyDeck);
+
+    const fetched = await getTrackedDeck("legacy");
+    expect(fetched?.slots[0].substitutes).toEqual([]);
+
+    const all = await getAllTrackedDecks();
+    expect(all[0].slots[0].substitutes).toEqual([]);
   });
 });

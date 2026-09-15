@@ -14,8 +14,17 @@ const sampleDeck: TrackedDeck = {
       slotId: "slot-1",
       pieceName: "駒A",
       owned: true,
-      substituteNote: null,
       acquisitionNote: null,
+      substitutes: [
+        {
+          candidateId: "sub-1",
+          name: "駒B",
+          reason: "同じ役割",
+          acquisitionNote: "常設ガチャ",
+          owned: false,
+          updatedAt: "2026-09-14T00:00:00.000Z",
+        },
+      ],
       updatedAt: "2026-09-14T00:00:00.000Z",
     },
   ],
@@ -31,6 +40,24 @@ describe("backupSchema", () => {
     expect(trackedDecks).toHaveLength(1);
     expect(trackedDecks[0].deckId).toBe("deck-1");
     expect(trackedDecks[0].slots[0].owned).toBe(true);
+    expect(trackedDecks[0].slots[0].substitutes).toHaveLength(1);
+    expect(trackedDecks[0].slots[0].substitutes[0].name).toBe("駒B");
+    expect(warnings).toHaveLength(0);
+  });
+
+  it("substitutesを持たない旧形式のバックアップでも復元でき、空配列になる", () => {
+    const legacySlot = {
+      slotId: "slot-1",
+      pieceName: "駒A",
+      owned: true,
+      substituteNote: "旧形式の自由記述メモ",
+      acquisitionNote: null,
+      updatedAt: "2026-09-14T00:00:00.000Z",
+    };
+    const backup = { schemaVersion: 1, exportedAt: "2026-09-14T00:00:00.000Z", trackedDecks: [{ ...sampleDeck, slots: [legacySlot] }] };
+    const { trackedDecks, warnings } = migrateBackup(backup);
+    expect(trackedDecks).toHaveLength(1);
+    expect(trackedDecks[0].slots[0].substitutes).toEqual([]);
     expect(warnings).toHaveLength(0);
   });
 

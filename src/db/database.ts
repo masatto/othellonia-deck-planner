@@ -1,4 +1,5 @@
 import { type DBSchema, type IDBPDatabase, openDB } from "idb";
+import { normalizeTrackedDeck } from "../domain/deckBuilder";
 import type { TrackedDeck } from "../domain/types";
 
 interface DeckPlannerDB extends DBSchema {
@@ -32,11 +33,13 @@ export function resetDbForTests(): void {
 }
 
 export async function getAllTrackedDecks(): Promise<TrackedDeck[]> {
-  return (await getDb()).getAll("trackedDecks");
+  const decks = await (await getDb()).getAll("trackedDecks");
+  return decks.map(normalizeTrackedDeck);
 }
 
 export async function getTrackedDeck(deckId: string): Promise<TrackedDeck | undefined> {
-  return (await getDb()).get("trackedDecks", deckId);
+  const deck = await (await getDb()).get("trackedDecks", deckId);
+  return deck ? normalizeTrackedDeck(deck) : undefined;
 }
 
 export async function putTrackedDeck(deck: TrackedDeck): Promise<void> {

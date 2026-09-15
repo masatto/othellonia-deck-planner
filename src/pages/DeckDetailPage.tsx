@@ -6,6 +6,7 @@ import { SLOT_RESEARCH_MAX_PIECES, validateSlotResearchResponse } from "../promp
 import { splitIntoBatches } from "../prompts/batching";
 import { parseExtractedJson } from "../prompts/jsonExtraction";
 import { copyToClipboard, downloadTextFile } from "../backup/shareUtils";
+import { mergeSubstituteCandidates } from "../domain/deckBuilder";
 
 type Step = "detail" | "researchPrompt" | "researchImport";
 
@@ -40,6 +41,17 @@ export function DeckDetailPage() {
     if (!deck) return;
     const now = new Date().toISOString();
     const slots = deck.slots.map((s) => (s.slotId === slotId ? { ...s, owned: !s.owned, updatedAt: now } : s));
+    await upsertTrackedDeck({ ...deck, slots, updatedAt: now });
+  }
+
+  async function toggleSubstituteOwned(slotId: string, candidateId: string) {
+    if (!deck) return;
+    const now = new Date().toISOString();
+    const slots = deck.slots.map((s) => {
+      if (s.slotId !== slotId) return s;
+      const substitutes = s.substitutes.map((c) => (c.candidateId === candidateId ? { ...c, owned: !c.owned, updatedAt: now } : c));
+      return { ...s, substitutes };
+    });
     await upsertTrackedDeck({ ...deck, slots, updatedAt: now });
   }
 
@@ -80,7 +92,12 @@ export function DeckDetailPage() {
       const match = byName.get(s.pieceName.trim());
       if (!match) return s;
       appliedCount++;
-      return { ...s, substituteNote: match.substituteSuggestion, acquisitionNote: match.acquisitionNote, updatedAt: now };
+      return {
+        ...s,
+        acquisitionNote: match.acquisitionNote,
+        substitutes: mergeSubstituteCandidates(s.substitutes, match.substitutes, now),
+        updatedAt: now,
+      };
     });
 
     const matchedNames = new Set(deck.slots.map((s) => s.pieceName.trim()));
@@ -237,19 +254,41 @@ export function DeckDetailPage() {
               <div style={{ fontWeight: 600 }}>{slot.pieceName}</div>
               {!slot.owned && (
                 <>
-                  {slot.substituteNote ? (
+                  {slot.acquisitionNote ? (
                     <p className="muted" style={{ marginTop: 4 }}>
-                      代替案: {slot.substituteNote}
+                      入手方法: {slot.acquisitionNote}
                     </p>
                   ) : (
                     <p className="muted" style={{ marginTop: 4 }}>
-                      代替案: 未調査
+                      入手方法: 未調査
                     </p>
                   )}
-                  {slot.acquisitionNote ? (
-                    <p className="muted">入手方法: {slot.acquisitionNote}</p>
+
+                  {slot.substitutes.length === 0 ? (
+                    <p className="muted">代用候補: 未調査</p>
                   ) : (
-                    <p className="muted">入手方法: 未調査</p>
+                    <div style={{ marginTop: 6 }}>
+                      <p className="muted">代用候補:</p>
+                      {slot.substitutes.map((c) => (
+                        <div
+                          key={c.candidateId}
+                          className="card"
+                          style={{ marginTop: 4, marginBottom: 0, padding: 10 }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: 14 }}>{c.name}</div>
+                          {c.reason && <p className="muted">理由: {c.reason}</p>}
+                          <p className="muted">入手方法: {c.acquisitionNote ?? "未調査"}</p>
+                          <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                            <input
+                              type="checkbox"
+                              checked={c.owned}
+                              onChange={() => toggleSubstituteOwned(slot.slotId, c.candidateId)}
+                            />
+                            <span className="muted">この代用候補を所持している</span>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </>
               )}

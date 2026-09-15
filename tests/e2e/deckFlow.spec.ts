@@ -36,7 +36,7 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await expect(page.getByText("所持チェック: 0 / 3")).toBeVisible();
   });
 
-  test("所持チェックを付けると未所持件数が減り、未所持駒の調査で代替案・入手方法が反映される", async ({ page }) => {
+  test("所持チェックを付けると未所持件数が減り、未所持駒の調査で入手方法・代用候補が反映される", async ({ page }) => {
     await trackTestDeck(page);
 
     // アルファは所持しているのでチェックを付ける
@@ -52,18 +52,29 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
       schemaVersion: 1,
       checkedAt: "2026-09-15",
       pieces: [
-        { pieceName: "ベータ", substituteSuggestion: "デルタで代用可能", acquisitionNote: "現在開催中のガチャに実装" },
-        { pieceName: "ガンマ", substituteSuggestion: null, acquisitionNote: "過去限定のため入手困難" },
+        {
+          pieceName: "ベータ",
+          acquisitionNote: "現在開催中のガチャに実装",
+          substitutes: [{ name: "デルタ", reason: "同じ役割のアタッカー", acquisitionNote: "常設ガチャに実装" }],
+        },
+        { pieceName: "ガンマ", acquisitionNote: "過去限定のため入手困難", substitutes: [] },
       ],
     };
     await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(researchResponse));
     await page.getByRole("button", { name: "検証して反映する" }).click();
 
     await expect(page.getByText(/2件のメモを反映しました/)).toBeVisible();
-    await expect(page.getByText("代替案: デルタで代用可能")).toBeVisible();
     await expect(page.getByText("入手方法: 現在開催中のガチャに実装")).toBeVisible();
-    await expect(page.getByText("代替案: 未調査")).toHaveCount(1); // ガンマはsubstituteSuggestionがnullのまま
     await expect(page.getByText("入手方法: 過去限定のため入手困難")).toBeVisible();
+    await expect(page.getByText("代用候補: 未調査")).toHaveCount(1); // ガンマはsubstitutesが空のまま
+
+    // デルタ(代用候補)の情報が表示され、個別に所持チェックできる
+    await expect(page.getByText("デルタ")).toBeVisible();
+    await expect(page.getByText("理由: 同じ役割のアタッカー")).toBeVisible();
+    const betaCard = page.locator(".card").filter({ hasText: "ベータ" }).first();
+    const substituteCheckbox = betaCard.locator(".card", { hasText: "デルタ" }).getByRole("checkbox");
+    await substituteCheckbox.check();
+    await expect(substituteCheckbox).toBeChecked();
   });
 
   test("不正なデッキ探索JSON(pieces空)は検証エラーが表示される", async ({ page }) => {
