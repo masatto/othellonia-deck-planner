@@ -1,0 +1,29 @@
+node_modules
+dist
+dist-ssr
+*.local
+
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# バックアップJSON（デッキメモ・チェック状態を含む可能性があるため誤コミット防止）
+othellonia-deck-planner-backup*.json
+backup-*.json
+
+# 秘密情報
+.env
+.env.*
+*.pem
+*.key
+
+# テスト・ビルド生成物
+test-results/
+playwright-report/
+coverage/
