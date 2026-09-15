@@ -36,6 +36,7 @@ test.describe("代用で対応可能タグ・不足駒まとめ", () => {
     await expect(page.getByText("代用で対応可能")).toHaveCount(0);
 
     const alphaCard = page.locator(".card").filter({ hasText: "アルファ" }).first();
+    await alphaCard.getByRole("button", { name: /代用候補（1件/ }).click();
     const substituteCheckbox = alphaCard.locator(".card", { hasText: "ガンマ" }).getByRole("checkbox");
     await substituteCheckbox.check();
 

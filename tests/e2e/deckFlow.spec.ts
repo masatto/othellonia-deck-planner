@@ -76,11 +76,13 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await expect(page.getByText("入手方法: 過去限定のため入手困難")).toBeVisible();
     await expect(page.getByText("代用候補: 未調査")).toHaveCount(1); // ガンマはsubstitutesが空のまま
 
-    // デルタ(代用候補)は結果反映時に自動的に展開表示され、個別に所持チェックできる
+    // デルタ(代用候補)の一覧は初期状態では折りたたまれている
     await expect(page.getByText("代用候補（1件、所持 0件）")).toBeVisible();
+    await expect(page.getByText("デルタ")).toHaveCount(0);
+    const betaCard = page.locator(".card").filter({ hasText: "ベータ" }).first();
+    await betaCard.getByRole("button", { name: /代用候補（1件/ }).click();
     await expect(page.getByText("デルタ")).toBeVisible();
     await expect(page.getByText("理由: 同じ役割のアタッカー")).toBeVisible();
-    const betaCard = page.locator(".card").filter({ hasText: "ベータ" }).first();
     const substituteCheckbox = betaCard.locator(".card", { hasText: "デルタ" }).getByRole("checkbox");
     await substituteCheckbox.check();
     await expect(substituteCheckbox).toBeChecked();
@@ -109,13 +111,13 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await page.getByRole("button", { name: "検証して反映する" }).click();
     await page.getByRole("button", { name: "デッキ詳細へ戻る" }).click();
 
-    // 反映直後は自動的に開いている
-    await expect(page.getByText("デルタ")).toBeVisible();
+    // 反映直後も初期状態では折りたたまれている
+    await expect(page.getByText("デルタ")).toHaveCount(0);
     const toggleButton = page.getByRole("button", { name: /代用候補（1件/ });
     await toggleButton.click();
-    await expect(page.getByText("デルタ")).toHaveCount(0);
-    await toggleButton.click();
     await expect(page.getByText("デルタ")).toBeVisible();
+    await toggleButton.click();
+    await expect(page.getByText("デルタ")).toHaveCount(0);
   });
 
   test("複数バッチに分かれる場合、1バッチ目を反映してもプロンプト画面に留まり続けて2バッチ目を取り込める", async ({

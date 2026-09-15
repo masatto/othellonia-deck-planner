@@ -109,7 +109,6 @@ export function DeckDetailPage() {
     let appliedCount = 0;
     const unmatched: string[] = [];
     const appliedNames: string[] = [];
-    const expandTargets: string[] = [];
     const byName = new Map(validated.data.pieces.map((p) => [p.pieceName.trim(), p]));
 
     const slots = deck.slots.map((s) => {
@@ -119,7 +118,6 @@ export function DeckDetailPage() {
       appliedCount++;
       appliedNames.push(trimmedName);
       const substitutes = mergeSubstituteCandidates(s.substitutes, match.substitutes, now);
-      if (substitutes.length > 0) expandTargets.push(s.slotId);
       return { ...s, acquisitionNote: match.acquisitionNote, substitutes, updatedAt: now };
     });
 
@@ -130,7 +128,6 @@ export function DeckDetailPage() {
 
     upsertTrackedDeck({ ...deck, slots, updatedAt: now });
     setResearchedNames((prev) => new Set([...prev, ...appliedNames]));
-    setExpandedSlots((prev) => new Set([...prev, ...expandTargets]));
     setApplyMessage(
       `${appliedCount}件のメモを反映しました。` +
         (unmatched.length > 0 ? ` 一致しなかった駒名: ${unmatched.join(", ")}` : ""),
