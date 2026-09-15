@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAppData } from "../state/AppDataContext";
+import { countCoveredSlots } from "../domain/coverage";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -23,17 +24,22 @@ export function HomePage() {
         </div>
       ) : (
         <>
-          <button className="btn btn-primary btn-block" style={{ marginBottom: 12 }} onClick={() => navigate("/search")}>
+          <button className="btn btn-primary btn-block" style={{ marginBottom: 8 }} onClick={() => navigate("/search")}>
             🔍 新しいデッキを探す
+          </button>
+          <button className="btn btn-block" style={{ marginBottom: 12 }} onClick={() => navigate("/shortages")}>
+            📊 不足駒まとめを見る
           </button>
           {sorted.map((deck) => {
             const ownedCount = deck.slots.filter((s) => s.owned).length;
+            const coveredCount = countCoveredSlots(deck.slots);
             return (
               <div key={deck.deckId} className="card" onClick={() => navigate(`/deck/${deck.deckId}`)} style={{ cursor: "pointer" }}>
                 <div style={{ fontWeight: 600 }}>{deck.deckName}</div>
                 {deck.concept && <p className="muted" style={{ marginTop: 4 }}>{deck.concept}</p>}
                 <div className="muted" style={{ marginTop: 4 }}>
                   所持チェック: {ownedCount} / {deck.slots.length}
+                  {coveredCount !== ownedCount && ` （代用込み: ${coveredCount} / ${deck.slots.length}）`}
                 </div>
               </div>
             );

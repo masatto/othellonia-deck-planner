@@ -5,6 +5,7 @@ import { Layout } from "./components/Layout";
 import { HomePage } from "./pages/HomePage";
 import { DeckSearchPage } from "./pages/DeckSearchPage";
 import { DeckDetailPage } from "./pages/DeckDetailPage";
+import { ShortagesPage } from "./pages/ShortagesPage";
 import { BackupPage } from "./pages/BackupPage";
 import { UpdateNotifier } from "./components/UpdateNotifier";
 
@@ -32,6 +33,7 @@ export default function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/search" element={<DeckSearchPage />} />
               <Route path="/deck/:deckId" element={<DeckDetailPage />} />
+              <Route path="/shortages" element={<ShortagesPage />} />
               <Route path="/backup" element={<BackupPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

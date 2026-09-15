@@ -7,6 +7,7 @@ import { splitIntoBatches } from "../prompts/batching";
 import { parseExtractedJson } from "../prompts/jsonExtraction";
 import { copyToClipboard, downloadTextFile } from "../backup/shareUtils";
 import { mergeSubstituteCandidates } from "../domain/deckBuilder";
+import { countCoveredSlots, isSlotCovered } from "../domain/coverage";
 
 type Step = "detail" | "researchPrompt" | "researchImport";
 
@@ -288,6 +289,7 @@ export function DeckDetailPage() {
         <div className="muted">
           所持チェック: {deck.slots.length - unownedSlots.length} / {deck.slots.length}
         </div>
+        <div className="muted">代用込み: {countCoveredSlots(deck.slots)} / {deck.slots.length}</div>
       </div>
 
       {deck.slots.map((slot) => (
@@ -304,9 +306,12 @@ export function DeckDetailPage() {
               style={{ marginTop: 2 }}
             />
             <div style={{ flex: 1 }}>
-              <label htmlFor={`owned-${slot.slotId}`} style={{ fontWeight: 600, display: "block", cursor: "pointer" }}>
-                {slot.pieceName}
-              </label>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                <label htmlFor={`owned-${slot.slotId}`} style={{ fontWeight: 600, cursor: "pointer" }}>
+                  {slot.pieceName}
+                </label>
+                {!slot.owned && isSlotCovered(slot) && <span className="tag tag-success">代用で対応可能</span>}
+              </div>
               {!slot.owned && (
                 <>
                   {slot.acquisitionNote ? (
