@@ -1,4 +1,4 @@
-import { isSlotCovered } from "./coverage";
+import { computeCoveredSlotIds } from "./coverage";
 import type { TrackedDeck } from "./types";
 
 export interface ShortageDeckRef {
@@ -21,8 +21,9 @@ export function summarizeShortages(decks: TrackedDeck[]): ShortagePieceSummary[]
   const byName = new Map<string, ShortagePieceSummary>();
 
   for (const deck of decks) {
+    const coveredSlotIds = computeCoveredSlotIds(deck.slots);
     for (const slot of deck.slots) {
-      if (isSlotCovered(slot)) continue;
+      if (coveredSlotIds.has(slot.slotId)) continue;
       const key = slot.pieceName.trim();
       const existing = byName.get(key);
       if (existing) {

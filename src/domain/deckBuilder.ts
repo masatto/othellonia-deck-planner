@@ -48,6 +48,29 @@ export function normalizeTrackedDeck(deck: TrackedDeck): TrackedDeck {
 }
 
 /**
+ * AIが提案した代用候補から、同じデッキの他の枠に既に採用されている駒を除外する。
+ * 1枠にしか入れられない都合上、デッキ内の別の駒を「代用」として使うことはできない
+ * ため（プロンプト側でも除外を指示しているが、AIが従わない場合の保険）。
+ */
+export function excludeDeckOwnPieces<T extends { name: string }>(
+  candidates: T[],
+  deckPieceNames: string[],
+): { kept: T[]; excludedNames: string[] } {
+  const deckNameSet = new Set(deckPieceNames.map((n) => n.trim()));
+  const kept: T[] = [];
+  const excludedNames: string[] = [];
+  for (const c of candidates) {
+    const trimmed = c.name.trim();
+    if (deckNameSet.has(trimmed)) {
+      excludedNames.push(trimmed);
+    } else {
+      kept.push(c);
+    }
+  }
+  return { kept, excludedNames };
+}
+
+/**
  * 未所持駒の調査結果から新しい代用候補一覧を組み立てる。
  * 既存の代用候補と名前が一致するものがあれば、ユーザーが付けた所持チェックを
  * 引き継ぐ（再調査のたびにチェックが消えてしまうのを防ぐため）。

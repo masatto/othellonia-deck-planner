@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildTrackedDeckFromCandidate, mergeSubstituteCandidates, normalizeTrackedDeck } from "../../src/domain/deckBuilder";
+import { buildTrackedDeckFromCandidate, excludeDeckOwnPieces, mergeSubstituteCandidates, normalizeTrackedDeck } from "../../src/domain/deckBuilder";
 import type { DeckCandidate } from "../../src/prompts/deckSearchSchema";
 import type { TrackedDeck } from "../../src/domain/types";
 
@@ -98,5 +98,31 @@ describe("mergeSubstituteCandidates", () => {
     expect(merged).toHaveLength(1);
     expect(merged[0].owned).toBe(false);
     expect(merged[0].candidateId).toBeTruthy();
+  });
+});
+
+describe("excludeDeckOwnPieces", () => {
+  it("デッキ内の別の駒と同名の代用候補を除外する", () => {
+    const candidates = [
+      { name: "駒B", reason: null, acquisitionNote: null },
+      { name: "駒D", reason: null, acquisitionNote: null },
+    ];
+    const { kept, excludedNames } = excludeDeckOwnPieces(candidates, ["駒A", "駒B", "駒C"]);
+    expect(kept).toEqual([{ name: "駒D", reason: null, acquisitionNote: null }]);
+    expect(excludedNames).toEqual(["駒B"]);
+  });
+
+  it("デッキ内の駒と一致しなければ全て残す", () => {
+    const candidates = [{ name: "駒D", reason: null, acquisitionNote: null }];
+    const { kept, excludedNames } = excludeDeckOwnPieces(candidates, ["駒A", "駒B", "駒C"]);
+    expect(kept).toEqual(candidates);
+    expect(excludedNames).toEqual([]);
+  });
+
+  it("前後の空白を無視して比較する", () => {
+    const candidates = [{ name: " 駒B ", reason: null, acquisitionNote: null }];
+    const { kept, excludedNames } = excludeDeckOwnPieces(candidates, ["駒B"]);
+    expect(kept).toEqual([]);
+    expect(excludedNames).toEqual(["駒B"]);
   });
 });

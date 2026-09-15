@@ -6,8 +6,8 @@ import { SLOT_RESEARCH_MAX_PIECES, validateSlotResearchResponse } from "../promp
 import { splitIntoBatches } from "../prompts/batching";
 import { parseExtractedJson } from "../prompts/jsonExtraction";
 import { copyToClipboard, downloadTextFile } from "../backup/shareUtils";
-import { mergeSubstituteCandidates } from "../domain/deckBuilder";
-import { countCoveredSlots, isSlotCovered } from "../domain/coverage";
+import { excludeDeckOwnPieces, mergeSubstituteCandidates } from "../domain/deckBuilder";
+import { computeCoveredSlotIds, countCoveredSlots, isSlotCovered } from "../domain/coverage";
 
 type Step = "detail" | "researchPrompt" | "researchImport";
 
@@ -35,6 +35,7 @@ export function DeckDetailPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const unownedSlots = useMemo(() => deck?.slots.filter((s) => !s.owned) ?? [], [deck]);
+  const coveredSlotIds = useMemo(() => computeCoveredSlotIds(deck?.slots ?? []), [deck]);
 
   if (!deck) {
     return (
@@ -75,8 +76,13 @@ export function DeckDetailPage() {
   }
 
   function generateResearchPrompt() {
+    const deckPieceNames = deck!.slots.map((s) => s.pieceName);
     const batches = splitIntoBatches(unownedSlots, SLOT_RESEARCH_MAX_PIECES).map((batch) => ({
-      prompt: buildSlotResearchPrompt(deck!.deckName, batch.map((s) => ({ pieceName: s.pieceName }))),
+      prompt: buildSlotResearchPrompt(
+        deck!.deckName,
+        batch.map((s) => ({ pieceName: s.pieceName })),
+        deckPieceNames,
+      ),
       pieceNames: batch.map((s) => s.pieceName.trim()),
     }));
     setPromptBatches(batches);
@@ -106,7 +112,9 @@ export function DeckDetailPage() {
     }
 
     const now = new Date().toISOString();
+    const deckPieceNames = deck.slots.map((s) => s.pieceName);
     let appliedCount = 0;
+    let excludedSubstituteCount = 0;
     const unmatched: string[] = [];
     const appliedNames: string[] = [];
     const byName = new Map(validated.data.pieces.map((p) => [p.pieceName.trim(), p]));
@@ -117,7 +125,11 @@ export function DeckDetailPage() {
       if (!match) return s;
       appliedCount++;
       appliedNames.push(trimmedName);
-      const substitutes = mergeSubstituteCandidates(s.substitutes, match.substitutes, now);
+      // デッキ内の別の枠の駒は、1枠にしか入れられないため代用候補として採用しない
+      // （プロンプト側でも除外を指示しているが、AIが従わない場合の保険）
+      const { kept, excludedNames } = excludeDeckOwnPieces(match.substitutes, deckPieceNames);
+      excludedSubstituteCount += excludedNames.length;
+      const substitutes = mergeSubstituteCandidates(s.substitutes, kept, now);
       return { ...s, acquisitionNote: match.acquisitionNote, substitutes, updatedAt: now };
     });
 
@@ -130,6 +142,7 @@ export function DeckDetailPage() {
     setResearchedNames((prev) => new Set([...prev, ...appliedNames]));
     setApplyMessage(
       `${appliedCount}件のメモを反映しました。` +
+        (excludedSubstituteCount > 0 ? ` ${excludedSubstituteCount}件はデッキ内の別枠の駒だったため代用候補から除外しました。` : "") +
         (unmatched.length > 0 ? ` 一致しなかった駒名: ${unmatched.join(", ")}` : ""),
     );
     setImportText("");
@@ -287,6 +300,10 @@ export function DeckDetailPage() {
           所持チェック: {deck.slots.length - unownedSlots.length} / {deck.slots.length}
         </div>
         <div className="muted">代用込み: {countCoveredSlots(deck.slots)} / {deck.slots.length}</div>
+        <div className="muted" style={{ fontSize: 12 }}>
+          ※同じ代用候補が複数の枠にまたがる場合、実際に使えるのは1体分のみのため、
+          デッキ内で先に出てくる枠を優先してカウントしています
+        </div>
       </div>
 
       {deck.slots.map((slot) => (
@@ -307,7 +324,7 @@ export function DeckDetailPage() {
                 <label htmlFor={`owned-${slot.slotId}`} style={{ fontWeight: 600, cursor: "pointer" }}>
                   {slot.pieceName}
                 </label>
-                {!slot.owned && isSlotCovered(slot) && <span className="tag tag-success">代用で対応可能</span>}
+                {!slot.owned && isSlotCovered(slot, coveredSlotIds) && <span className="tag tag-success">代用で対応可能</span>}
               </div>
               {!slot.owned && (
                 <>

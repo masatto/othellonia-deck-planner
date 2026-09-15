@@ -69,4 +69,17 @@ describe("summarizeShortages", () => {
   it("デッキが無い場合は空配列を返す", () => {
     expect(summarizeShortages([])).toEqual([]);
   });
+
+  it("同じデッキ内で複数のスロットが同じ代用候補を共有している場合、1体分しかカバーされないため一方は不足として残る", () => {
+    const sharedSubstitute = { candidateId: "s1", name: "共通駒", reason: null, acquisitionNote: null, owned: true, updatedAt: "2026-09-15T00:00:00.000Z" };
+    const decks = [
+      makeDeck("d1", "デッキ1", [
+        makeSlot("駒A", { substitutes: [sharedSubstitute] }),
+        makeSlot("駒B", { substitutes: [{ ...sharedSubstitute }] }),
+      ]),
+    ];
+    const result = summarizeShortages(decks);
+    expect(result).toHaveLength(1);
+    expect(result[0].pieceName).toBe("駒B");
+  });
 });

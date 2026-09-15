@@ -192,6 +192,38 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await expect(page.getByText(/検証エラー/)).toBeVisible();
   });
 
+  test("デッキ内の別の枠と同名の代用候補は除外され、その旨が表示される", async ({ page }) => {
+    await trackTestDeck(page);
+    await page.getByRole("button", { name: "🔍 未所持駒を調査する（3件）" }).click();
+    await page.getByRole("button", { name: "ChatGPTの回答（JSON）を取り込む" }).click();
+
+    const researchResponse = {
+      schemaVersion: 1,
+      checkedAt: "2026-09-15",
+      pieces: [
+        {
+          pieceName: "ベータ",
+          acquisitionNote: null,
+          // アルファは同じデッキ内の別枠のため除外され、デルタだけが残るはず
+          substitutes: [
+            { name: "アルファ", reason: null, acquisitionNote: null },
+            { name: "デルタ", reason: null, acquisitionNote: null },
+          ],
+        },
+      ],
+    };
+    await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(researchResponse));
+    await page.getByRole("button", { name: "検証して反映する" }).click();
+    await expect(page.getByText(/1件はデッキ内の別枠の駒だったため代用候補から除外しました/)).toBeVisible();
+
+    await page.getByRole("button", { name: "デッキ詳細へ戻る" }).click();
+    const betaCard = page.locator(".card").filter({ hasText: "ベータ" }).first();
+    await expect(betaCard.getByRole("button", { name: /代用候補（1件/ })).toBeVisible();
+    await betaCard.getByRole("button", { name: /代用候補（1件/ }).click();
+    await expect(betaCard.locator(".card", { hasText: "アルファ" })).toHaveCount(0);
+    await expect(betaCard.locator(".card", { hasText: "デルタ" })).toBeVisible();
+  });
+
   test("デッキの追跡をやめると一覧から消える", async ({ page }) => {
     await trackTestDeck(page);
     page.once("dialog", (dialog) => dialog.accept());

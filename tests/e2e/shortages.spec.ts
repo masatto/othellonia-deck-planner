@@ -46,6 +46,37 @@ test.describe("代用で対応可能タグ・不足駒まとめ", () => {
     await expect(page.getByText("所持チェック: 0 / 2")).toBeVisible();
   });
 
+  test("同じ代用候補が複数の枠で共有されている場合、実際に使えるのは1体分のみなので片方だけが「代用で対応可能」になる", async ({ page }) => {
+    await waitForAppReady(page);
+    await trackDeck(page, "デッキA", ["アルファ", "ベータ"]);
+
+    await page.getByRole("button", { name: "🔍 未所持駒を調査する（2件）" }).click();
+    await page.getByRole("button", { name: "ChatGPTの回答（JSON）を取り込む" }).click();
+    const researchResponse = {
+      schemaVersion: 1,
+      checkedAt: "2026-09-15",
+      pieces: [
+        { pieceName: "アルファ", acquisitionNote: null, substitutes: [{ name: "共通駒", reason: null, acquisitionNote: null }] },
+        { pieceName: "ベータ", acquisitionNote: null, substitutes: [{ name: "共通駒", reason: null, acquisitionNote: null }] },
+      ],
+    };
+    await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(researchResponse));
+    await page.getByRole("button", { name: "検証して反映する" }).click();
+    await page.getByRole("button", { name: "デッキ詳細へ戻る" }).click();
+
+    const alphaCard = page.locator(".card").filter({ hasText: "アルファ" }).first();
+    const betaCard = page.locator(".card").filter({ hasText: "ベータ" }).first();
+    await alphaCard.getByRole("button", { name: /代用候補（1件/ }).click();
+    await betaCard.getByRole("button", { name: /代用候補（1件/ }).click();
+    await alphaCard.locator(".card", { hasText: "共通駒" }).getByRole("checkbox").check();
+    await betaCard.locator(".card", { hasText: "共通駒" }).getByRole("checkbox").check();
+
+    // 「共通駒」を実際に持っているのは1体だけなので、先に出てくるアルファ側だけが対応可能になる
+    await expect(alphaCard.getByText("代用で対応可能")).toBeVisible();
+    await expect(betaCard.getByText("代用で対応可能")).toHaveCount(0);
+    await expect(page.getByText("代用込み: 1 / 2")).toBeVisible();
+  });
+
   test("複数デッキで共通して必要な駒が不足駒まとめの上位に表示される", async ({ page }) => {
     await waitForAppReady(page);
     await trackDeck(page, "デッキA", ["共通駒", "固有駒A"]);
