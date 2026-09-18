@@ -21,6 +21,9 @@ export function DeckSearchPage() {
   const [importErrors, setImportErrors] = useState<string[] | null>(null);
   const [checkedAt, setCheckedAt] = useState<string>("");
   const [candidates, setCandidates] = useState<DeckCandidate[]>([]);
+  /** 候補一覧の何番目を追跡済みか（候補ごとの追跡先deckId）。複数のデッキを
+   * 続けて追跡できるよう、1件追跡しても候補一覧の画面には留まる */
+  const [trackedDeckIds, setTrackedDeckIds] = useState<Record<number, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   function generatePrompt() {
@@ -48,6 +51,7 @@ export function DeckSearchPage() {
     }
     setCandidates(validated.data.decks);
     setCheckedAt(validated.data.checkedAt);
+    setTrackedDeckIds({});
     setStep("candidates");
   }
 
@@ -56,11 +60,11 @@ export function DeckSearchPage() {
     runValidation(text);
   }
 
-  async function trackDeck(candidate: DeckCandidate) {
+  async function trackDeck(candidate: DeckCandidate, index: number) {
     const now = new Date().toISOString();
     const deck = buildTrackedDeckFromCandidate(candidate, checkedAt, now);
     await upsertTrackedDeck(deck);
-    navigate(`/deck/${deck.deckId}`);
+    setTrackedDeckIds((prev) => ({ ...prev, [index]: deck.deckId }));
   }
 
   if (step === "prompt") {
@@ -155,33 +159,51 @@ export function DeckSearchPage() {
     return (
       <div className="screen">
         <h1>デッキ候補</h1>
-        <p className="muted">気に入った編成案を選んで「このデッキを追跡する」を押してください。</p>
-        {candidates.map((c, i) => (
-          <div key={i} className="card">
-            <div style={{ fontWeight: 600 }}>{c.deckName}</div>
-            {c.concept && <p className="muted" style={{ marginTop: 4 }}>{c.concept}</p>}
-            <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {c.pieces.map((p, j) => (
-                <span key={j} className="tag">
-                  {p}
-                </span>
-              ))}
+        <p className="muted">
+          気に入った編成案を選んで「このデッキを追跡する」を押してください。複数のデッキを
+          続けて追跡することもできます。
+        </p>
+        {candidates.map((c, i) => {
+          const trackedDeckId = trackedDeckIds[i];
+          return (
+            <div key={i} className="card">
+              <div style={{ fontWeight: 600 }}>{c.deckName}</div>
+              {c.concept && <p className="muted" style={{ marginTop: 4 }}>{c.concept}</p>}
+              <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
+                {c.pieces.map((p, j) => (
+                  <span key={j} className="tag">
+                    {p}
+                  </span>
+                ))}
+              </div>
+              {c.sourceUrl && (
+                <p className="muted" style={{ marginTop: 8 }}>
+                  出典:{" "}
+                  <a href={c.sourceUrl} target="_blank" rel="noreferrer">
+                    {c.sourceTitle ?? c.sourceUrl}
+                  </a>
+                </p>
+              )}
+              {trackedDeckId ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                  <span className="tag tag-success">✓ 追跡中</span>
+                  <button className="btn" onClick={() => navigate(`/deck/${trackedDeckId}`)}>
+                    デッキ詳細を見る
+                  </button>
+                </div>
+              ) : (
+                <button className="btn btn-primary btn-block" style={{ marginTop: 8 }} onClick={() => trackDeck(c, i)}>
+                  このデッキを追跡する
+                </button>
+              )}
             </div>
-            {c.sourceUrl && (
-              <p className="muted" style={{ marginTop: 8 }}>
-                出典:{" "}
-                <a href={c.sourceUrl} target="_blank" rel="noreferrer">
-                  {c.sourceTitle ?? c.sourceUrl}
-                </a>
-              </p>
-            )}
-            <button className="btn btn-primary btn-block" style={{ marginTop: 8 }} onClick={() => trackDeck(c)}>
-              このデッキを追跡する
-            </button>
-          </div>
-        ))}
-        <button className="btn btn-block" onClick={() => setStep("input")}>
+          );
+        })}
+        <button className="btn btn-block" style={{ marginBottom: 8 }} onClick={() => setStep("input")}>
           最初からやり直す
+        </button>
+        <button className="btn btn-primary btn-block" onClick={() => navigate("/")}>
+          デッキ一覧へ
         </button>
       </div>
     );

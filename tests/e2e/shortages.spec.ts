@@ -13,6 +13,7 @@ async function trackDeck(page: Page, deckName: string, pieces: string[]) {
   await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(response));
   await page.getByRole("button", { name: "検証する" }).click();
   await page.getByRole("button", { name: "このデッキを追跡する" }).click();
+  await page.getByRole("button", { name: "デッキ詳細を見る" }).click();
   await expect(page.getByRole("heading", { name: deckName })).toBeVisible();
 }
 

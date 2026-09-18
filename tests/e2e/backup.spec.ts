@@ -23,6 +23,7 @@ async function trackTestDeck(page: Page) {
   await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(DECK_SEARCH_RESPONSE));
   await page.getByRole("button", { name: "検証する" }).click();
   await page.getByRole("button", { name: "このデッキを追跡する" }).click();
+  await page.getByRole("button", { name: "デッキ詳細を見る" }).click();
   await expect(page.getByRole("heading", { name: "バックアップ検証デッキ" })).toBeVisible();
 }
 

@@ -24,6 +24,7 @@ async function trackTestDeck(page: import("@playwright/test").Page) {
   await page.getByRole("button", { name: "検証する" }).click();
   await expect(page.getByRole("heading", { name: "デッキ候補" })).toBeVisible();
   await page.getByRole("button", { name: "このデッキを追跡する" }).click();
+  await page.getByRole("button", { name: "デッキ詳細を見る" }).click();
   await expect(page.getByRole("heading", { name: "テスト周回デッキ" })).toBeVisible();
 }
 
@@ -34,6 +35,40 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await expect(page.getByText("ベータ")).toBeVisible();
     await expect(page.getByText("ガンマ")).toBeVisible();
     await expect(page.getByText("所持チェック: 0 / 3")).toBeVisible();
+  });
+
+  test("複数のデッキ候補を1回の検索結果から続けて追跡できる", async ({ page }) => {
+    await waitForAppReady(page);
+    const multiDeckResponse = {
+      schemaVersion: 1,
+      checkedAt: "2026-09-15",
+      decks: [
+        { deckName: "候補デッキ1", concept: null, pieces: ["駒1", "駒2"], sourceUrl: null, sourceTitle: null },
+        { deckName: "候補デッキ2", concept: null, pieces: ["駒3", "駒4"], sourceUrl: null, sourceTitle: null },
+      ],
+    };
+    await page.getByRole("button", { name: "🔍 デッキを探す" }).click();
+    await page.getByRole("button", { name: "プロンプトを生成する" }).click();
+    await page.getByRole("button", { name: "ChatGPTの回答（JSON）を取り込む" }).click();
+    await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(multiDeckResponse));
+    await page.getByRole("button", { name: "検証する" }).click();
+
+    const card1 = page.locator(".card").filter({ hasText: "候補デッキ1" });
+    const card2 = page.locator(".card").filter({ hasText: "候補デッキ2" });
+
+    // 1件目を追跡しても候補一覧の画面に留まり、続けて2件目も追跡できる
+    await card1.getByRole("button", { name: "このデッキを追跡する" }).click();
+    await expect(card1.getByText("✓ 追跡中")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "デッキ候補" })).toBeVisible();
+    await expect(card2.getByRole("button", { name: "このデッキを追跡する" })).toBeVisible();
+
+    await card2.getByRole("button", { name: "このデッキを追跡する" }).click();
+    await expect(card2.getByText("✓ 追跡中")).toBeVisible();
+
+    await page.getByRole("button", { name: "デッキ一覧へ" }).click();
+    await expect(page.getByRole("heading", { name: "デッキ一覧" })).toBeVisible();
+    await expect(page.getByText("候補デッキ1")).toBeVisible();
+    await expect(page.getByText("候補デッキ2")).toBeVisible();
   });
 
   test("所持チェックを付けると未所持件数が減り、未所持駒の調査で入手方法・代用候補が反映される", async ({ page }) => {
@@ -143,6 +178,7 @@ test.describe("デッキ探索→追跡→所持チェック→未所持駒調�
     await page.getByPlaceholder("ChatGPTの回答をここに貼り付け").fill(JSON.stringify(bigDeckResponse));
     await page.getByRole("button", { name: "検証する" }).click();
     await page.getByRole("button", { name: "このデッキを追跡する" }).click();
+    await page.getByRole("button", { name: "デッキ詳細を見る" }).click();
 
     await page.getByRole("button", { name: "🔍 未所持駒を調査する（6件）" }).click();
     // 5件ずつのバッチ2つに分かれる
